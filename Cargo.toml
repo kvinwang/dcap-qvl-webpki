@@ -14,13 +14,13 @@
 
 [package]
 categories = ["cryptography", "no-std"]
-description = "Web PKI X.509 Certificate Verification."
+description = "Fork of rustls-webpki to support single cert CRL check."
 edition = "2021"
 rust-version = "1.71"
 license = "ISC"
-name = "rustls-webpki"
+name = "dcap-qvl-webpki"
 readme = "README.md"
-repository = "https://github.com/rustls/webpki"
+repository = "https://github.com/kvinwang/dcap-qvl-webpki"
 version = "0.103.3"
 
 include = [
@@ -67,7 +67,7 @@ allowed_external_types = [
 ]
 
 [lib]
-name = "webpki"
+name = "dcap_qvl_webpki"
 
 [features]
 default = ["std"]

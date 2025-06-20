@@ -1,3 +1,4 @@
+use dcap_qvl_webpki as webpki;
 use webpki::{BorrowedCertRevocationList, CertRevocationList, DerTypeId, Error};
 
 const REVOKED_SERIAL: &[u8] = &[0x03, 0xAE, 0x51, 0xDB, 0x51, 0x15, 0x5A, 0x3C];

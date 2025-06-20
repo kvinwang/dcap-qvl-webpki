@@ -16,7 +16,7 @@ use pki_types::{SignatureVerificationAlgorithm, UnixTime};
 
 use crate::error::Error;
 use crate::verify_cert::{Budget, PathNode, Role};
-use crate::{der, public_values_eq};
+use crate::{EndEntityCert, der, public_values_eq};
 
 use core::fmt::Debug;
 
@@ -264,6 +264,49 @@ impl CertNotRevoked {
 /// An opaque error indicating the caller must provide at least one CRL when building a
 /// [RevocationOptions] instance.
 pub struct CrlsRequired(pub(crate) ());
+
+/// Check a single certificate against a CRL.
+#[cfg(feature = "alloc")]
+pub fn check_single_cert_crl(
+    cert_der: &[u8],
+    crls_der: &[&[u8]],
+    time: UnixTime,
+) -> Result<(), Error> {
+    use alloc::vec::Vec;
+
+    let cert_der = pki_types::CertificateDer::from(cert_der);
+    let cert = EndEntityCert::try_from(&cert_der)?;
+    let crls = crls_der
+        .iter()
+        .map(|crl_der| BorrowedCertRevocationList::from_der(crl_der).map(|crl| crl.into()))
+        .collect::<Result<Vec<_>, _>>()?;
+    let crls = crls.iter().collect::<Vec<_>>();
+    let crl_opts = RevocationOptionsBuilder::new(&crls)
+        .or(Err(Error::UnknownRevocationStatus))?
+        .with_depth(RevocationCheckDepth::EndEntity)
+        .with_status_policy(UnknownStatusPolicy::Deny)
+        .with_expiration_policy(ExpirationPolicy::Enforce)
+        .build();
+    let path = crate::verify_cert::PartialPath::new(&cert);
+    let path = path.node();
+    let issuer_subject = path.cert.subject;
+    let issuer_spki = path.cert.spki;
+    let issuer_ku = None;
+    let budget = &mut Budget::default();
+    let result = crl_opts.check(
+        &path,
+        issuer_subject,
+        issuer_spki,
+        issuer_ku,
+        crate::ALL_VERIFICATION_ALGS,
+        budget,
+        time,
+    )?;
+    if result.is_none() {
+        return Err(Error::UnknownRevocationStatus);
+    }
+    Ok(())
+}
 
 #[cfg(test)]
 mod tests {

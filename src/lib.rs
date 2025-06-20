@@ -76,7 +76,7 @@ pub use {
     crl::{
         BorrowedCertRevocationList, BorrowedRevokedCert, CertRevocationList, ExpirationPolicy,
         RevocationCheckDepth, RevocationOptions, RevocationOptionsBuilder, RevocationReason,
-        UnknownStatusPolicy,
+        UnknownStatusPolicy, check_single_cert_crl,
     },
     end_entity::EndEntityCert,
     error::{DerTypeId, Error, InvalidNameContext},
