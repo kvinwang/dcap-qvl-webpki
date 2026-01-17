@@ -12,7 +12,7 @@
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![cfg(any(feature = "ring", feature = "aws-lc-rs"))]
+#![cfg(any(feature = "ring", feature = "aws-lc-rs", feature = "rustcrypto"))]
 
 use core::time::Duration;
 
@@ -27,6 +27,8 @@ static ALGS: &[&dyn SignatureVerificationAlgorithm] = &[
     webpki::ring::ECDSA_P256_SHA256,
     #[cfg(feature = "aws-lc-rs")]
     webpki::aws_lc_rs::ECDSA_P256_SHA256,
+    #[cfg(feature = "rustcrypto")]
+    webpki::rustcrypto::ECDSA_P256_SHA256,
 ];
 
 fn check_cert(

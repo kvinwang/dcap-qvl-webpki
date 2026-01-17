@@ -12,7 +12,7 @@
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![cfg(any(feature = "ring", feature = "aws-lc-rs"))]
+#![cfg(any(feature = "ring", feature = "aws-lc-rs", feature = "rustcrypto"))]
 
 use core::time::Duration;
 

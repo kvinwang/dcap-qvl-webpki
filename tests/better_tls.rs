@@ -1,4 +1,4 @@
-#![cfg(any(feature = "ring", feature = "aws-lc-rs"))]
+#![cfg(any(feature = "ring", feature = "aws-lc-rs", feature = "rustcrypto"))]
 
 use core::time::Duration;
 use std::collections::HashMap;
@@ -19,6 +19,8 @@ static ALGS: &[&dyn SignatureVerificationAlgorithm] = &[
     webpki::ring::ECDSA_P256_SHA256,
     #[cfg(feature = "aws-lc-rs")]
     webpki::aws_lc_rs::ECDSA_P256_SHA256,
+    #[cfg(feature = "rustcrypto")]
+    webpki::rustcrypto::ECDSA_P256_SHA256,
 ];
 
 #[ignore] // Runs slower than other unit tests - opt-in with `cargo test -- --include-ignored`

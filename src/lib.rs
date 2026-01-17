@@ -25,6 +25,7 @@
 //! | `std` | Enable features that require libstd. Implies `alloc`. |
 //! | `ring` | Enable use of the *ring* crate for cryptography. |
 //! | `aws-lc-rs` | Enable use of the aws-lc-rs crate for cryptography. Previously this feature was named `aws_lc_rs`. |
+//! | `rustcrypto` | Enable use of RustCrypto crates for pure Rust cryptography. |
 
 #![no_std]
 #![warn(elided_lifetimes_in_paths, unreachable_pub, clippy::use_self)]
@@ -58,6 +59,8 @@ mod end_entity;
 mod error;
 #[cfg(feature = "ring")]
 mod ring_algs;
+#[cfg(feature = "rustcrypto")]
+mod rustcrypto_algs;
 mod rpk_entity;
 mod signed_data;
 mod subject_name;
@@ -119,9 +122,26 @@ pub mod aws_lc_rs {
     };
 }
 
+#[cfg(feature = "rustcrypto")]
+/// Signature verification algorithm implementations using RustCrypto crates.
+pub mod rustcrypto {
+    pub use super::rustcrypto_algs::{
+        ECDSA_P256_SHA256, ECDSA_P256_SHA384, ECDSA_P384_SHA256, ECDSA_P384_SHA384, ED25519,
+    };
+
+    #[cfg(feature = "alloc")]
+    pub use super::rustcrypto_algs::{
+        RSA_PKCS1_2048_8192_SHA256, RSA_PKCS1_2048_8192_SHA256_ABSENT_PARAMS,
+        RSA_PKCS1_2048_8192_SHA384, RSA_PKCS1_2048_8192_SHA384_ABSENT_PARAMS,
+        RSA_PKCS1_2048_8192_SHA512, RSA_PKCS1_2048_8192_SHA512_ABSENT_PARAMS,
+        RSA_PKCS1_3072_8192_SHA384, RSA_PSS_2048_8192_SHA256_LEGACY_KEY,
+        RSA_PSS_2048_8192_SHA384_LEGACY_KEY, RSA_PSS_2048_8192_SHA512_LEGACY_KEY,
+    };
+}
+
 /// An array of all the verification algorithms exported by this crate.
 ///
-/// This will be empty if the crate is built without the `ring` and `aws-lc-rs` features.
+/// This will be empty if the crate is built without the `ring`, `aws-lc-rs`, or `rustcrypto` features.
 pub static ALL_VERIFICATION_ALGS: &[&dyn pki_types::SignatureVerificationAlgorithm] = &[
     #[cfg(feature = "ring")]
     ring::ECDSA_P256_SHA256,
@@ -189,6 +209,36 @@ pub static ALL_VERIFICATION_ALGS: &[&dyn pki_types::SignatureVerificationAlgorit
     aws_lc_rs::RSA_PSS_2048_8192_SHA384_LEGACY_KEY,
     #[cfg(feature = "aws-lc-rs")]
     aws_lc_rs::RSA_PSS_2048_8192_SHA512_LEGACY_KEY,
+    #[cfg(feature = "rustcrypto")]
+    rustcrypto::ECDSA_P256_SHA256,
+    #[cfg(feature = "rustcrypto")]
+    rustcrypto::ECDSA_P256_SHA384,
+    #[cfg(feature = "rustcrypto")]
+    rustcrypto::ECDSA_P384_SHA256,
+    #[cfg(feature = "rustcrypto")]
+    rustcrypto::ECDSA_P384_SHA384,
+    #[cfg(feature = "rustcrypto")]
+    rustcrypto::ED25519,
+    #[cfg(all(feature = "rustcrypto", feature = "alloc"))]
+    rustcrypto::RSA_PKCS1_2048_8192_SHA256,
+    #[cfg(all(feature = "rustcrypto", feature = "alloc"))]
+    rustcrypto::RSA_PKCS1_2048_8192_SHA384,
+    #[cfg(all(feature = "rustcrypto", feature = "alloc"))]
+    rustcrypto::RSA_PKCS1_2048_8192_SHA512,
+    #[cfg(all(feature = "rustcrypto", feature = "alloc"))]
+    rustcrypto::RSA_PKCS1_2048_8192_SHA256_ABSENT_PARAMS,
+    #[cfg(all(feature = "rustcrypto", feature = "alloc"))]
+    rustcrypto::RSA_PKCS1_2048_8192_SHA384_ABSENT_PARAMS,
+    #[cfg(all(feature = "rustcrypto", feature = "alloc"))]
+    rustcrypto::RSA_PKCS1_2048_8192_SHA512_ABSENT_PARAMS,
+    #[cfg(all(feature = "rustcrypto", feature = "alloc"))]
+    rustcrypto::RSA_PKCS1_3072_8192_SHA384,
+    #[cfg(all(feature = "rustcrypto", feature = "alloc"))]
+    rustcrypto::RSA_PSS_2048_8192_SHA256_LEGACY_KEY,
+    #[cfg(all(feature = "rustcrypto", feature = "alloc"))]
+    rustcrypto::RSA_PSS_2048_8192_SHA384_LEGACY_KEY,
+    #[cfg(all(feature = "rustcrypto", feature = "alloc"))]
+    rustcrypto::RSA_PSS_2048_8192_SHA512_LEGACY_KEY,
 ];
 
 fn public_values_eq(a: untrusted::Input<'_>, b: untrusted::Input<'_>) -> bool {

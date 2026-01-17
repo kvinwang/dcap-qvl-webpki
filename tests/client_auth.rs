@@ -12,7 +12,7 @@
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![cfg(all(feature = "alloc", any(feature = "ring", feature = "aws-lc-rs")))]
+#![cfg(all(feature = "alloc", any(feature = "ring", feature = "aws-lc-rs", feature = "rustcrypto")))]
 
 use std::error::Error as StdError;
 
