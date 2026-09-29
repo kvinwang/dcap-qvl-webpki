@@ -141,6 +141,17 @@ impl CertRevocationList<'_> {
         .map_err(crl_signature_err)
     }
 
+    /// Returns true if the CRL signature was already verified with `issuer_spki`.
+    pub(crate) fn signature_verified_by(&self, issuer_spki: untrusted::Input<'_>) -> bool {
+        match self {
+            #[cfg(feature = "alloc")]
+            CertRevocationList::Owned(crl) => {
+                crl.verified_issuer_spki.as_deref() == Some(issuer_spki.as_slice_less_safe())
+            }
+            CertRevocationList::Borrowed(_) => false,
+        }
+    }
+
     /// Checks the verification time is before the time in the CRL nextUpdate field.
     pub(crate) fn check_expiration(&self, time: UnixTime) -> Result<(), Error> {
         let next_update = match self {
@@ -174,6 +185,9 @@ pub struct OwnedCertRevocationList {
     signed_data: signed_data::OwnedSignedData,
 
     next_update: UnixTime,
+
+    /// SPKI of the issuer whose signature over this CRL was verified at construction.
+    verified_issuer_spki: Option<Vec<u8>>,
 }
 
 #[cfg(feature = "alloc")]
@@ -192,6 +206,30 @@ impl OwnedCertRevocationList {
     /// [^1]: <https://www.rfc-editor.org/rfc/rfc5280#section-5>
     pub fn from_der(crl_der: &[u8]) -> Result<Self, Error> {
         BorrowedCertRevocationList::from_der(crl_der)?.to_owned()
+    }
+
+    /// Like [`OwnedCertRevocationList::from_der`], but also verifies the CRL signature with
+    /// `issuer_spki` (the DER-encoded SubjectPublicKeyInfo without its outer SEQUENCE tag,
+    /// as in [`pki_types::TrustAnchor::subject_public_key_info`]).
+    ///
+    /// Revocation checks where the CRL issuer has this SPKI then skip re-verifying the
+    /// signature, so a CRL shared by several certificate chains is verified only once.
+    pub fn from_der_verified(
+        crl_der: &[u8],
+        issuer_spki: &[u8],
+        supported_sig_algs: &[&dyn SignatureVerificationAlgorithm],
+    ) -> Result<Self, Error> {
+        let crl = BorrowedCertRevocationList::from_der(crl_der)?;
+        signed_data::verify_signed_data(
+            supported_sig_algs,
+            untrusted::Input::from(issuer_spki),
+            &crl.signed_data,
+            &mut Budget::default(),
+        )
+        .map_err(crl_signature_err)?;
+        let mut crl = crl.to_owned()?;
+        crl.verified_issuer_spki = Some(issuer_spki.to_vec());
+        Ok(crl)
     }
 
     fn find_serial(&self, serial: &[u8]) -> Result<Option<BorrowedRevokedCert<'_>>, Error> {
@@ -262,6 +300,7 @@ impl<'a> BorrowedCertRevocationList<'a> {
                 .map(|idp| idp.as_slice_less_safe().to_vec()),
             revoked_certs,
             next_update: self.next_update,
+            verified_issuer_spki: None,
         })
     }
 

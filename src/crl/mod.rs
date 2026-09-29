@@ -149,8 +149,10 @@ impl RevocationOptions<'_> {
         // TODO(XXX): consider whether we can refactor so this happens once up-front, instead
         //            of per-lookup.
         //            https://github.com/rustls/webpki/issues/81
-        crl.verify_signature(supported_sig_algs, issuer_spki, budget)
-            .map_err(crl_signature_err)?;
+        if !crl.signature_verified_by(issuer_spki) {
+            crl.verify_signature(supported_sig_algs, issuer_spki, budget)
+                .map_err(crl_signature_err)?;
+        }
 
         if self.expiration_policy == ExpirationPolicy::Enforce {
             crl.check_expiration(time)?;
@@ -274,14 +276,23 @@ pub fn check_single_cert_crl(
 ) -> Result<(), Error> {
     use alloc::vec::Vec;
 
-    let cert_der = pki_types::CertificateDer::from(cert_der);
-    let cert = EndEntityCert::try_from(&cert_der)?;
     let crls = crls_der
         .iter()
         .map(|crl_der| BorrowedCertRevocationList::from_der(crl_der).map(|crl| crl.into()))
         .collect::<Result<Vec<_>, _>>()?;
     let crls = crls.iter().collect::<Vec<_>>();
-    let crl_opts = RevocationOptionsBuilder::new(&crls)
+    check_single_cert_revocation(cert_der, &crls, time)
+}
+
+/// Check a single certificate against already parsed CRLs.
+pub fn check_single_cert_revocation(
+    cert_der: &[u8],
+    crls: &[&CertRevocationList<'_>],
+    time: UnixTime,
+) -> Result<(), Error> {
+    let cert_der = pki_types::CertificateDer::from(cert_der);
+    let cert = EndEntityCert::try_from(&cert_der)?;
+    let crl_opts = RevocationOptionsBuilder::new(crls)
         .or(Err(Error::UnknownRevocationStatus))?
         .with_depth(RevocationCheckDepth::EndEntity)
         .with_status_policy(UnknownStatusPolicy::Deny)
