@@ -169,17 +169,17 @@ impl SignatureVerificationAlgorithm for Ed25519Algorithm {
 }
 
 // ============================================================================
-// RSA Implementation (requires alloc)
+// RSA Implementation (requires the `rustcrypto-rsa` feature)
 // ============================================================================
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "rustcrypto-rsa")]
 #[derive(Debug, Clone, Copy)]
 enum RsaPadding {
     Pkcs1v15,
     Pss,
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "rustcrypto-rsa")]
 #[derive(Debug, Clone, Copy)]
 enum RsaHash {
     Sha256,
@@ -187,7 +187,7 @@ enum RsaHash {
     Sha512,
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "rustcrypto-rsa")]
 #[derive(Debug)]
 struct RsaAlgorithm {
     public_key_alg_id: AlgorithmIdentifier,
@@ -197,7 +197,7 @@ struct RsaAlgorithm {
     min_key_bits: usize,
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "rustcrypto-rsa")]
 impl SignatureVerificationAlgorithm for RsaAlgorithm {
     fn public_key_alg_id(&self) -> AlgorithmIdentifier {
         self.public_key_alg_id
@@ -319,7 +319,7 @@ pub static ED25519: &dyn SignatureVerificationAlgorithm = &Ed25519Algorithm {
 };
 
 /// RSA PKCS#1 1.5 signatures using SHA-256 for keys of 2048-8192 bits.
-#[cfg(feature = "alloc")]
+#[cfg(feature = "rustcrypto-rsa")]
 pub static RSA_PKCS1_2048_8192_SHA256: &dyn SignatureVerificationAlgorithm = &RsaAlgorithm {
     public_key_alg_id: alg_id::RSA_ENCRYPTION,
     signature_alg_id: alg_id::RSA_PKCS1_SHA256,
@@ -329,7 +329,7 @@ pub static RSA_PKCS1_2048_8192_SHA256: &dyn SignatureVerificationAlgorithm = &Rs
 };
 
 /// RSA PKCS#1 1.5 signatures using SHA-384 for keys of 2048-8192 bits.
-#[cfg(feature = "alloc")]
+#[cfg(feature = "rustcrypto-rsa")]
 pub static RSA_PKCS1_2048_8192_SHA384: &dyn SignatureVerificationAlgorithm = &RsaAlgorithm {
     public_key_alg_id: alg_id::RSA_ENCRYPTION,
     signature_alg_id: alg_id::RSA_PKCS1_SHA384,
@@ -339,7 +339,7 @@ pub static RSA_PKCS1_2048_8192_SHA384: &dyn SignatureVerificationAlgorithm = &Rs
 };
 
 /// RSA PKCS#1 1.5 signatures using SHA-512 for keys of 2048-8192 bits.
-#[cfg(feature = "alloc")]
+#[cfg(feature = "rustcrypto-rsa")]
 pub static RSA_PKCS1_2048_8192_SHA512: &dyn SignatureVerificationAlgorithm = &RsaAlgorithm {
     public_key_alg_id: alg_id::RSA_ENCRYPTION,
     signature_alg_id: alg_id::RSA_PKCS1_SHA512,
@@ -350,7 +350,7 @@ pub static RSA_PKCS1_2048_8192_SHA512: &dyn SignatureVerificationAlgorithm = &Rs
 
 /// RSA PKCS#1 1.5 signatures using SHA-256 for keys of 2048-8192 bits,
 /// with illegally absent AlgorithmIdentifier parameters.
-#[cfg(feature = "alloc")]
+#[cfg(feature = "rustcrypto-rsa")]
 pub static RSA_PKCS1_2048_8192_SHA256_ABSENT_PARAMS: &dyn SignatureVerificationAlgorithm =
     &RsaAlgorithm {
         public_key_alg_id: alg_id::RSA_ENCRYPTION,
@@ -364,7 +364,7 @@ pub static RSA_PKCS1_2048_8192_SHA256_ABSENT_PARAMS: &dyn SignatureVerificationA
 
 /// RSA PKCS#1 1.5 signatures using SHA-384 for keys of 2048-8192 bits,
 /// with illegally absent AlgorithmIdentifier parameters.
-#[cfg(feature = "alloc")]
+#[cfg(feature = "rustcrypto-rsa")]
 pub static RSA_PKCS1_2048_8192_SHA384_ABSENT_PARAMS: &dyn SignatureVerificationAlgorithm =
     &RsaAlgorithm {
         public_key_alg_id: alg_id::RSA_ENCRYPTION,
@@ -378,7 +378,7 @@ pub static RSA_PKCS1_2048_8192_SHA384_ABSENT_PARAMS: &dyn SignatureVerificationA
 
 /// RSA PKCS#1 1.5 signatures using SHA-512 for keys of 2048-8192 bits,
 /// with illegally absent AlgorithmIdentifier parameters.
-#[cfg(feature = "alloc")]
+#[cfg(feature = "rustcrypto-rsa")]
 pub static RSA_PKCS1_2048_8192_SHA512_ABSENT_PARAMS: &dyn SignatureVerificationAlgorithm =
     &RsaAlgorithm {
         public_key_alg_id: alg_id::RSA_ENCRYPTION,
@@ -391,7 +391,7 @@ pub static RSA_PKCS1_2048_8192_SHA512_ABSENT_PARAMS: &dyn SignatureVerificationA
     };
 
 /// RSA PKCS#1 1.5 signatures using SHA-384 for keys of 3072-8192 bits.
-#[cfg(feature = "alloc")]
+#[cfg(feature = "rustcrypto-rsa")]
 pub static RSA_PKCS1_3072_8192_SHA384: &dyn SignatureVerificationAlgorithm = &RsaAlgorithm {
     public_key_alg_id: alg_id::RSA_ENCRYPTION,
     signature_alg_id: alg_id::RSA_PKCS1_SHA384,
@@ -404,7 +404,7 @@ pub static RSA_PKCS1_3072_8192_SHA384: &dyn SignatureVerificationAlgorithm = &Rs
 /// type rsaEncryption; see [RFC 4055 Section 1.2].
 ///
 /// [RFC 4055 Section 1.2]: https://tools.ietf.org/html/rfc4055#section-1.2
-#[cfg(feature = "alloc")]
+#[cfg(feature = "rustcrypto-rsa")]
 pub static RSA_PSS_2048_8192_SHA256_LEGACY_KEY: &dyn SignatureVerificationAlgorithm =
     &RsaAlgorithm {
         public_key_alg_id: alg_id::RSA_ENCRYPTION,
@@ -418,7 +418,7 @@ pub static RSA_PSS_2048_8192_SHA256_LEGACY_KEY: &dyn SignatureVerificationAlgori
 /// type rsaEncryption; see [RFC 4055 Section 1.2].
 ///
 /// [RFC 4055 Section 1.2]: https://tools.ietf.org/html/rfc4055#section-1.2
-#[cfg(feature = "alloc")]
+#[cfg(feature = "rustcrypto-rsa")]
 pub static RSA_PSS_2048_8192_SHA384_LEGACY_KEY: &dyn SignatureVerificationAlgorithm =
     &RsaAlgorithm {
         public_key_alg_id: alg_id::RSA_ENCRYPTION,
@@ -432,7 +432,7 @@ pub static RSA_PSS_2048_8192_SHA384_LEGACY_KEY: &dyn SignatureVerificationAlgori
 /// type rsaEncryption; see [RFC 4055 Section 1.2].
 ///
 /// [RFC 4055 Section 1.2]: https://tools.ietf.org/html/rfc4055#section-1.2
-#[cfg(feature = "alloc")]
+#[cfg(feature = "rustcrypto-rsa")]
 pub static RSA_PSS_2048_8192_SHA512_LEGACY_KEY: &dyn SignatureVerificationAlgorithm =
     &RsaAlgorithm {
         public_key_alg_id: alg_id::RSA_ENCRYPTION,
@@ -456,26 +456,26 @@ mod tests {
         super::ECDSA_P256_SHA256,
         super::ECDSA_P384_SHA384,
         super::ED25519,
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "rustcrypto-rsa")]
         super::RSA_PKCS1_2048_8192_SHA256,
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "rustcrypto-rsa")]
         super::RSA_PKCS1_2048_8192_SHA384,
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "rustcrypto-rsa")]
         super::RSA_PKCS1_2048_8192_SHA512,
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "rustcrypto-rsa")]
         super::RSA_PKCS1_3072_8192_SHA384,
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "rustcrypto-rsa")]
         super::RSA_PSS_2048_8192_SHA256_LEGACY_KEY,
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "rustcrypto-rsa")]
         super::RSA_PSS_2048_8192_SHA384_LEGACY_KEY,
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "rustcrypto-rsa")]
         super::RSA_PSS_2048_8192_SHA512_LEGACY_KEY,
         // Algorithms deprecated because they are nonsensical combinations.
         super::ECDSA_P256_SHA384, // Truncates digest.
         super::ECDSA_P384_SHA256, // Digest is unnecessarily short.
     ];
 
-    const UNSUPPORTED_SIGNATURE_ALGORITHM_FOR_RSA_KEY: Error = if cfg!(feature = "alloc") {
+    const UNSUPPORTED_SIGNATURE_ALGORITHM_FOR_RSA_KEY: Error = if cfg!(feature = "rustcrypto-rsa") {
         Error::UnsupportedSignatureAlgorithmForPublicKey
     } else {
         Error::UnsupportedSignatureAlgorithm
@@ -483,13 +483,13 @@ mod tests {
 
     const UNSUPPORTED_ECDSA_SHA512_SIGNATURE: Error = Error::UnsupportedSignatureAlgorithm;
 
-    const INVALID_SIGNATURE_FOR_RSA_KEY: Error = if cfg!(feature = "alloc") {
+    const INVALID_SIGNATURE_FOR_RSA_KEY: Error = if cfg!(feature = "rustcrypto-rsa") {
         Error::InvalidSignatureForPublicKey
     } else {
         Error::UnsupportedSignatureAlgorithm
     };
 
-    const OK_IF_RSA_AVAILABLE: Result<(), Error> = if cfg!(feature = "alloc") {
+    const OK_IF_RSA_AVAILABLE: Result<(), Error> = if cfg!(feature = "rustcrypto-rsa") {
         Ok(())
     } else {
         Err(Error::UnsupportedSignatureAlgorithm)

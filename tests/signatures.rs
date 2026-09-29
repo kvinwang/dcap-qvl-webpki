@@ -12,7 +12,10 @@
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![cfg(all(feature = "alloc", any(feature = "ring", feature = "aws-lc-rs", feature = "rustcrypto")))]
+#![cfg(all(
+    feature = "alloc",
+    any(feature = "ring", feature = "aws-lc-rs", feature = "rustcrypto-rsa")
+))]
 
 use pki_types::{CertificateDer, SignatureVerificationAlgorithm};
 #[cfg(feature = "ring")]
@@ -26,7 +29,11 @@ use webpki::ring::{
     RSA_PSS_2048_8192_SHA384_LEGACY_KEY, RSA_PSS_2048_8192_SHA512_LEGACY_KEY,
 };
 
-#[cfg(all(not(feature = "ring"), not(feature = "aws-lc-rs"), feature = "rustcrypto"))]
+#[cfg(all(
+    not(feature = "ring"),
+    not(feature = "aws-lc-rs"),
+    feature = "rustcrypto-rsa"
+))]
 use webpki::rustcrypto::{
     ECDSA_P256_SHA256, ECDSA_P256_SHA384, ECDSA_P384_SHA256, ECDSA_P384_SHA384, ED25519,
     RSA_PKCS1_2048_8192_SHA256, RSA_PKCS1_2048_8192_SHA384, RSA_PKCS1_2048_8192_SHA512,
