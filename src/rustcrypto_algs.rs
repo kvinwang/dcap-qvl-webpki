@@ -446,58 +446,67 @@ pub static RSA_PSS_2048_8192_SHA512_LEGACY_KEY: &dyn SignatureVerificationAlgori
 // Tests
 // ============================================================================
 
-#[cfg(test)]
+// The shared vectors expect "RSA unsupported" only without `alloc`, so run them
+// with `rustcrypto-rsa` (which implies `alloc`).
+#[cfg(all(test, feature = "rustcrypto-rsa"))]
 #[path = "."]
 mod tests {
-    use crate::Error;
+    use crate::error::{
+        Error, UnsupportedSignatureAlgorithmContext,
+        UnsupportedSignatureAlgorithmForPublicKeyContext,
+    };
 
     static SUPPORTED_ALGORITHMS_IN_TESTS: &[&dyn super::SignatureVerificationAlgorithm] = &[
         // Reasonable algorithms.
         super::ECDSA_P256_SHA256,
         super::ECDSA_P384_SHA384,
         super::ED25519,
-        #[cfg(feature = "rustcrypto-rsa")]
         super::RSA_PKCS1_2048_8192_SHA256,
-        #[cfg(feature = "rustcrypto-rsa")]
         super::RSA_PKCS1_2048_8192_SHA384,
-        #[cfg(feature = "rustcrypto-rsa")]
         super::RSA_PKCS1_2048_8192_SHA512,
-        #[cfg(feature = "rustcrypto-rsa")]
         super::RSA_PKCS1_3072_8192_SHA384,
-        #[cfg(feature = "rustcrypto-rsa")]
         super::RSA_PSS_2048_8192_SHA256_LEGACY_KEY,
-        #[cfg(feature = "rustcrypto-rsa")]
         super::RSA_PSS_2048_8192_SHA384_LEGACY_KEY,
-        #[cfg(feature = "rustcrypto-rsa")]
         super::RSA_PSS_2048_8192_SHA512_LEGACY_KEY,
         // Algorithms deprecated because they are nonsensical combinations.
         super::ECDSA_P256_SHA384, // Truncates digest.
         super::ECDSA_P384_SHA256, // Digest is unnecessarily short.
     ];
 
-    const UNSUPPORTED_SIGNATURE_ALGORITHM_FOR_RSA_KEY: Error = if cfg!(feature = "rustcrypto-rsa") {
-        Error::UnsupportedSignatureAlgorithmForPublicKey
-    } else {
-        Error::UnsupportedSignatureAlgorithm
-    };
-
-    const UNSUPPORTED_ECDSA_SHA512_SIGNATURE: Error = Error::UnsupportedSignatureAlgorithm;
-
-    const INVALID_SIGNATURE_FOR_RSA_KEY: Error = if cfg!(feature = "rustcrypto-rsa") {
-        Error::InvalidSignatureForPublicKey
-    } else {
-        Error::UnsupportedSignatureAlgorithm
-    };
-
-    const OK_IF_RSA_AVAILABLE: Result<(), Error> = if cfg!(feature = "rustcrypto-rsa") {
-        Ok(())
-    } else {
-        Err(Error::UnsupportedSignatureAlgorithm)
-    };
-
     // RustCrypto curves support point compression
     const OK_IF_POINT_COMPRESSION_SUPPORTED: Result<(), Error> = Ok(());
 
     #[path = "alg_tests.rs"]
     mod alg_tests;
+
+    fn maybe_rsa() -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn unsupported_for_rsa(sig_alg_id: &[u8], public_key_alg_id: &[u8]) -> Error {
+        Error::UnsupportedSignatureAlgorithmForPublicKeyContext(
+            UnsupportedSignatureAlgorithmForPublicKeyContext {
+                signature_algorithm_id: sig_alg_id.to_vec(),
+                public_key_algorithm_id: public_key_alg_id.to_vec(),
+            },
+        )
+    }
+
+    fn invalid_rsa_signature() -> Error {
+        Error::InvalidSignatureForPublicKey
+    }
+
+    fn unsupported_for_ecdsa(sig_alg_id: &[u8], _public_key_alg_id: &[u8]) -> Error {
+        unsupported(sig_alg_id)
+    }
+
+    fn unsupported(sig_alg_id: &[u8]) -> Error {
+        Error::UnsupportedSignatureAlgorithmContext(UnsupportedSignatureAlgorithmContext {
+            signature_algorithm_id: sig_alg_id.to_vec(),
+            supported_algorithms: SUPPORTED_ALGORITHMS_IN_TESTS
+                .iter()
+                .map(|&alg| alg.signature_alg_id())
+                .collect(),
+        })
+    }
 }

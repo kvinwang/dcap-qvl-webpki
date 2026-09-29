@@ -212,9 +212,17 @@ impl KeyUsageMode {
 // signature, not a certificate.
 fn crl_signature_err(err: Error) -> Error {
     match err {
+        #[allow(deprecated)]
         Error::UnsupportedSignatureAlgorithm => Error::UnsupportedCrlSignatureAlgorithm,
+        Error::UnsupportedSignatureAlgorithmContext(cx) => {
+            Error::UnsupportedCrlSignatureAlgorithmContext(cx)
+        }
+        #[allow(deprecated)]
         Error::UnsupportedSignatureAlgorithmForPublicKey => {
             Error::UnsupportedCrlSignatureAlgorithmForPublicKey
+        }
+        Error::UnsupportedSignatureAlgorithmForPublicKeyContext(cx) => {
+            Error::UnsupportedCrlSignatureAlgorithmForPublicKeyContext(cx)
         }
         Error::InvalidSignatureForPublicKey => Error::InvalidCrlSignatureForPublicKey,
         _ => err,
@@ -281,13 +289,17 @@ pub fn check_single_cert_crl(
         .map(|crl_der| BorrowedCertRevocationList::from_der(crl_der).map(|crl| crl.into()))
         .collect::<Result<Vec<_>, _>>()?;
     let crls = crls.iter().collect::<Vec<_>>();
-    check_single_cert_revocation(cert_der, &crls, time)
+    check_single_cert_revocation(cert_der, &crls, crate::ALL_VERIFICATION_ALGS, time)
 }
 
 /// Check a single certificate against already parsed CRLs.
+///
+/// CRL signatures are verified with `supported_sig_algs`. Passing only the algorithms a
+/// caller needs, instead of [`crate::ALL_VERIFICATION_ALGS`], lets the linker drop the rest.
 pub fn check_single_cert_revocation(
     cert_der: &[u8],
     crls: &[&CertRevocationList<'_>],
+    supported_sig_algs: &[&dyn SignatureVerificationAlgorithm],
     time: UnixTime,
 ) -> Result<(), Error> {
     let cert_der = pki_types::CertificateDer::from(cert_der);
@@ -309,7 +321,7 @@ pub fn check_single_cert_revocation(
         issuer_subject,
         issuer_spki,
         issuer_ku,
-        crate::ALL_VERIFICATION_ALGS,
+        supported_sig_algs,
         budget,
         time,
     )?;
@@ -348,7 +360,7 @@ mod tests {
         #[cfg(feature = "alloc")]
         {
             // The builder should be debug, and clone when alloc is enabled
-            std::println!("{:?}", builder);
+            std::println!("{builder:?}");
             _ = builder.clone();
         }
         let opts = builder.build();
