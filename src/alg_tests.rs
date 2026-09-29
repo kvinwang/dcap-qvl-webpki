@@ -14,18 +14,19 @@
 
 #![allow(clippy::duplicate_mod)]
 
-use std::prelude::v1::*;
+use alloc::string::String;
+use alloc::vec::Vec;
 
 use base64::{Engine as _, engine::general_purpose};
+use pki_types::alg_id;
 
-use crate::error::{DerTypeId, Error};
+use crate::error::{DerTypeId, Error, UnsupportedSignatureAlgorithmForPublicKeyContext};
 use crate::verify_cert::Budget;
 use crate::{der, signed_data};
 
 use super::{
-    INVALID_SIGNATURE_FOR_RSA_KEY, OK_IF_POINT_COMPRESSION_SUPPORTED, OK_IF_RSA_AVAILABLE,
-    SUPPORTED_ALGORITHMS_IN_TESTS, UNSUPPORTED_ECDSA_SHA512_SIGNATURE,
-    UNSUPPORTED_SIGNATURE_ALGORITHM_FOR_RSA_KEY,
+    OK_IF_POINT_COMPRESSION_SUPPORTED, SUPPORTED_ALGORITHMS_IN_TESTS, invalid_rsa_signature,
+    maybe_rsa, unsupported, unsupported_for_ecdsa, unsupported_for_rsa,
 };
 
 macro_rules! test_file_bytes {
@@ -113,7 +114,10 @@ fn test_ecdsa_prime256v1_sha512_spki_params_null() {
         test_verify_signed_data(test_file_bytes!(
             "ecdsa-prime256v1-sha512-spki-params-null.pem"
         )),
-        Err(UNSUPPORTED_ECDSA_SHA512_SIGNATURE)
+        Err(unsupported_for_ecdsa(
+            &alg_id::ECDSA_SHA512,
+            include_bytes!("../tests/signatures/alg-id-ecpublickey-params-null.der")
+        ))
     );
 }
 
@@ -135,7 +139,10 @@ fn test_ecdsa_prime256v1_sha512_using_ecdh_key() {
         test_verify_signed_data(test_file_bytes!(
             "ecdsa-prime256v1-sha512-using-ecdh-key.pem"
         )),
-        Err(UNSUPPORTED_ECDSA_SHA512_SIGNATURE)
+        Err(unsupported_for_ecdsa(
+            &alg_id::ECDSA_SHA512,
+            include_bytes!("../tests/signatures/alg-ecdh-secp256r1.der")
+        ))
     );
 }
 
@@ -147,7 +154,10 @@ fn test_ecdsa_prime256v1_sha512_using_ecmqv_key() {
         test_verify_signed_data(test_file_bytes!(
             "ecdsa-prime256v1-sha512-using-ecmqv-key.pem"
         )),
-        Err(UNSUPPORTED_ECDSA_SHA512_SIGNATURE)
+        Err(unsupported_for_ecdsa(
+            &alg_id::ECDSA_SHA512,
+            include_bytes!("../tests/signatures/alg-ecmqv-secp256r1.der")
+        ))
     );
 }
 
@@ -156,8 +166,11 @@ fn test_ecdsa_prime256v1_sha512_using_rsa_algorithm() {
     assert_eq!(
         test_verify_signed_data(test_file_bytes!(
             "ecdsa-prime256v1-sha512-using-rsa-algorithm.pem"
-        )),
-        Err(UNSUPPORTED_SIGNATURE_ALGORITHM_FOR_RSA_KEY)
+        ),),
+        Err(unsupported_for_rsa(
+            &alg_id::RSA_PKCS1_SHA512,
+            &alg_id::ECDSA_P256,
+        ))
     );
 }
 
@@ -169,7 +182,10 @@ fn test_ecdsa_prime256v1_sha512_wrong_signature_format() {
         test_verify_signed_data(test_file_bytes!(
             "ecdsa-prime256v1-sha512-wrong-signature-format.pem"
         )),
-        Err(UNSUPPORTED_ECDSA_SHA512_SIGNATURE)
+        Err(unsupported_for_ecdsa(
+            &alg_id::ECDSA_SHA512,
+            &alg_id::ECDSA_P256,
+        ))
     );
 }
 
@@ -178,7 +194,10 @@ fn test_ecdsa_prime256v1_sha512_wrong_signature_format() {
 fn test_ecdsa_prime256v1_sha512() {
     assert_eq!(
         test_verify_signed_data(test_file_bytes!("ecdsa-prime256v1-sha512.pem")),
-        Err(UNSUPPORTED_ECDSA_SHA512_SIGNATURE)
+        Err(unsupported_for_ecdsa(
+            &alg_id::ECDSA_SHA512,
+            &alg_id::ECDSA_P256,
+        ))
     );
 }
 
@@ -204,7 +223,14 @@ fn test_ecdsa_secp384r1_sha256() {
 fn test_ecdsa_using_rsa_key() {
     assert_eq!(
         test_verify_signed_data(test_file_bytes!("ecdsa-using-rsa-key.pem")),
-        Err(Error::UnsupportedSignatureAlgorithmForPublicKey)
+        Err(Error::UnsupportedSignatureAlgorithmForPublicKeyContext(
+            UnsupportedSignatureAlgorithmForPublicKeyContext {
+                #[cfg(feature = "alloc")]
+                signature_algorithm_id: alg_id::ECDSA_SHA256.as_ref().to_vec(),
+                #[cfg(feature = "alloc")]
+                public_key_algorithm_id: alg_id::RSA_ENCRYPTION.as_ref().to_vec(),
+            }
+        ))
     );
 }
 
@@ -228,7 +254,9 @@ fn test_rsa_pkcs1_sha1_bad_key_der_null() {
 fn test_rsa_pkcs1_sha1_key_params_absent() {
     assert_eq!(
         test_verify_signed_data(test_file_bytes!("rsa-pkcs1-sha1-key-params-absent.pem")),
-        Err(Error::UnsupportedSignatureAlgorithm)
+        Err(unsupported(include_bytes!(
+            "../tests/signatures/alg-rsae-sha1.der"
+        )))
     );
 }
 
@@ -238,7 +266,9 @@ fn test_rsa_pkcs1_sha1_using_pss_key_no_params() {
         test_verify_signed_data(test_file_bytes!(
             "rsa-pkcs1-sha1-using-pss-key-no-params.pem"
         )),
-        Err(Error::UnsupportedSignatureAlgorithm)
+        Err(unsupported(include_bytes!(
+            "../tests/signatures/alg-rsae-sha1.der"
+        )))
     );
 }
 
@@ -246,7 +276,7 @@ fn test_rsa_pkcs1_sha1_using_pss_key_no_params() {
 fn test_rsa_pkcs1_sha1_wrong_algorithm() {
     assert_eq!(
         test_verify_signed_data(test_file_bytes!("rsa-pkcs1-sha1-wrong-algorithm.pem")),
-        Err(INVALID_SIGNATURE_FOR_RSA_KEY)
+        Err(invalid_rsa_signature())
     );
 }
 
@@ -254,7 +284,9 @@ fn test_rsa_pkcs1_sha1_wrong_algorithm() {
 fn test_rsa_pkcs1_sha1() {
     assert_eq!(
         test_verify_signed_data(test_file_bytes!("rsa-pkcs1-sha1.pem")),
-        Err(Error::UnsupportedSignatureAlgorithm)
+        Err(unsupported(include_bytes!(
+            "../tests/signatures/alg-rsae-sha1.der"
+        )))
     );
 }
 
@@ -267,7 +299,7 @@ fn test_rsa_pkcs1_sha1() {
 fn test_rsa_pkcs1_sha256() {
     assert_eq!(
         test_verify_signed_data(test_file_bytes!("rsa-pkcs1-sha256.pem")),
-        Err(INVALID_SIGNATURE_FOR_RSA_KEY)
+        Err(invalid_rsa_signature())
     );
 }
 
@@ -285,7 +317,10 @@ fn test_rsa_pkcs1_sha256_spki_non_null_params() {
         test_verify_signed_data(test_file_bytes!(
             "rsa-pkcs1-sha256-spki-non-null-params.pem"
         )),
-        Err(UNSUPPORTED_SIGNATURE_ALGORITHM_FOR_RSA_KEY)
+        Err(unsupported_for_rsa(
+            &alg_id::RSA_PKCS1_SHA256,
+            include_bytes!("../tests/signatures/alg-rsae-bad-params.der")
+        ))
     );
 }
 
@@ -295,7 +330,14 @@ fn test_rsa_pkcs1_sha256_using_ecdsa_algorithm() {
         test_verify_signed_data(test_file_bytes!(
             "rsa-pkcs1-sha256-using-ecdsa-algorithm.pem"
         )),
-        Err(Error::UnsupportedSignatureAlgorithmForPublicKey)
+        Err(Error::UnsupportedSignatureAlgorithmForPublicKeyContext(
+            UnsupportedSignatureAlgorithmForPublicKeyContext {
+                #[cfg(feature = "alloc")]
+                signature_algorithm_id: alg_id::ECDSA_SHA256.as_ref().to_vec(),
+                #[cfg(feature = "alloc")]
+                public_key_algorithm_id: alg_id::RSA_ENCRYPTION.as_ref().to_vec(),
+            }
+        ))
     );
 }
 
@@ -303,7 +345,10 @@ fn test_rsa_pkcs1_sha256_using_ecdsa_algorithm() {
 fn test_rsa_pkcs1_sha256_using_id_ea_rsa() {
     assert_eq!(
         test_verify_signed_data(test_file_bytes!("rsa-pkcs1-sha256-using-id-ea-rsa.pem")),
-        Err(UNSUPPORTED_SIGNATURE_ALGORITHM_FOR_RSA_KEY)
+        Err(unsupported_for_rsa(
+            &alg_id::RSA_PKCS1_SHA256,
+            include_bytes!("../tests/signatures/alg-rsa-null-params.der")
+        ))
     );
 }
 
@@ -315,7 +360,9 @@ fn test_rsa_pss_sha1_salt20_using_pss_key_no_params() {
         test_verify_signed_data(test_file_bytes!(
             "rsa-pss-sha1-salt20-using-pss-key-no-params.pem"
         )),
-        Err(Error::UnsupportedSignatureAlgorithm)
+        Err(unsupported(include_bytes!(
+            "../tests/signatures/alg-rsapss-defaults.der"
+        )))
     );
 }
 
@@ -325,14 +372,18 @@ fn test_rsa_pss_sha1_salt20_using_pss_key_with_null_params() {
         test_verify_signed_data(test_file_bytes!(
             "rsa-pss-sha1-salt20-using-pss-key-with-null-params.pem"
         )),
-        Err(Error::UnsupportedSignatureAlgorithm)
+        Err(unsupported(include_bytes!(
+            "../tests/signatures/alg-rsapss-defaults.der"
+        )))
     );
 }
 #[test]
 fn test_rsa_pss_sha1_salt20() {
     assert_eq!(
         test_verify_signed_data(test_file_bytes!("rsa-pss-sha1-salt20.pem")),
-        Err(Error::UnsupportedSignatureAlgorithm)
+        Err(unsupported(include_bytes!(
+            "../tests/signatures/alg-rsapss-defaults.der"
+        )))
     );
 }
 
@@ -340,7 +391,9 @@ fn test_rsa_pss_sha1_salt20() {
 fn test_rsa_pss_sha1_wrong_salt() {
     assert_eq!(
         test_verify_signed_data(test_file_bytes!("rsa-pss-sha1-wrong-salt.pem")),
-        Err(Error::UnsupportedSignatureAlgorithm)
+        Err(unsupported(include_bytes!(
+            "../tests/signatures/alg-rsapss-salt23.der"
+        )))
     );
 }
 
@@ -348,7 +401,9 @@ fn test_rsa_pss_sha1_wrong_salt() {
 fn test_rsa_pss_sha256_mgf1_sha512_salt33() {
     assert_eq!(
         test_verify_signed_data(test_file_bytes!("rsa-pss-sha256-mgf1-sha512-salt33.pem")),
-        Err(Error::UnsupportedSignatureAlgorithm)
+        Err(unsupported(include_bytes!(
+            "../tests/signatures/alg-rsapss-sha256-mgf1-sha512-salt33.der"
+        )))
     );
 }
 
@@ -358,7 +413,9 @@ fn test_rsa_pss_sha256_salt10_using_pss_key_with_params() {
         test_verify_signed_data(test_file_bytes!(
             "rsa-pss-sha256-salt10-using-pss-key-with-params.pem"
         )),
-        Err(Error::UnsupportedSignatureAlgorithm)
+        Err(unsupported(include_bytes!(
+            "../tests/signatures/alg-rsapss-sha256-mgf1-sha256-salt10.der"
+        )))
     );
 }
 #[test]
@@ -367,7 +424,9 @@ fn test_rsa_pss_sha256_salt10_using_pss_key_with_wrong_params() {
         test_verify_signed_data(test_file_bytes!(
             "rsa-pss-sha256-salt10-using-pss-key-with-wrong-params.pem"
         )),
-        Err(Error::UnsupportedSignatureAlgorithm)
+        Err(unsupported(include_bytes!(
+            "../tests/signatures/alg-rsapss-sha256-mgf1-sha256-salt10.der"
+        )))
     );
 }
 
@@ -375,7 +434,9 @@ fn test_rsa_pss_sha256_salt10_using_pss_key_with_wrong_params() {
 fn test_rsa_pss_sha256_salt10() {
     assert_eq!(
         test_verify_signed_data(test_file_bytes!("rsa-pss-sha256-salt10.pem")),
-        Err(Error::UnsupportedSignatureAlgorithm)
+        Err(unsupported(include_bytes!(
+            "../tests/signatures/alg-rsapss-sha256-mgf1-sha256-salt10.der"
+        )))
     );
 }
 
@@ -385,7 +446,7 @@ fn test_rsa_pss_sha256_salt10() {
 fn test_rsa_pss_sha256_salt32() {
     assert_eq!(
         test_verify_signed_data(test_file_bytes!("ours/rsa-pss-sha256-salt32.pem")),
-        OK_IF_RSA_AVAILABLE
+        maybe_rsa()
     );
 }
 
@@ -393,7 +454,7 @@ fn test_rsa_pss_sha256_salt32() {
 fn test_rsa_pss_sha384_salt48() {
     assert_eq!(
         test_verify_signed_data(test_file_bytes!("ours/rsa-pss-sha384-salt48.pem")),
-        OK_IF_RSA_AVAILABLE
+        maybe_rsa()
     );
 }
 
@@ -401,7 +462,7 @@ fn test_rsa_pss_sha384_salt48() {
 fn test_rsa_pss_sha512_salt64() {
     assert_eq!(
         test_verify_signed_data(test_file_bytes!("ours/rsa-pss-sha512-salt64.pem")),
-        OK_IF_RSA_AVAILABLE
+        maybe_rsa()
     );
 }
 
@@ -411,7 +472,7 @@ fn test_rsa_pss_sha256_salt32_corrupted_data() {
         test_verify_signed_data(test_file_bytes!(
             "ours/rsa-pss-sha256-salt32-corrupted-data.pem"
         )),
-        Err(INVALID_SIGNATURE_FOR_RSA_KEY)
+        Err(invalid_rsa_signature())
     );
 }
 
@@ -421,7 +482,7 @@ fn test_rsa_pss_sha384_salt48_corrupted_data() {
         test_verify_signed_data(test_file_bytes!(
             "ours/rsa-pss-sha384-salt48-corrupted-data.pem"
         )),
-        Err(INVALID_SIGNATURE_FOR_RSA_KEY)
+        Err(invalid_rsa_signature())
     );
 }
 
@@ -431,7 +492,7 @@ fn test_rsa_pss_sha512_salt64_corrupted_data() {
         test_verify_signed_data(test_file_bytes!(
             "ours/rsa-pss-sha512-salt64-corrupted-data.pem"
         )),
-        Err(INVALID_SIGNATURE_FOR_RSA_KEY)
+        Err(invalid_rsa_signature())
     );
 }
 
@@ -439,7 +500,10 @@ fn test_rsa_pss_sha512_salt64_corrupted_data() {
 fn test_rsa_using_ec_key() {
     assert_eq!(
         test_verify_signed_data(test_file_bytes!("rsa-using-ec-key.pem")),
-        Err(UNSUPPORTED_SIGNATURE_ALGORITHM_FOR_RSA_KEY)
+        Err(unsupported_for_rsa(
+            &alg_id::RSA_PKCS1_SHA256,
+            &alg_id::ECDSA_P256
+        ))
     );
 }
 
@@ -447,7 +511,7 @@ fn test_rsa_using_ec_key() {
 fn test_rsa2048_pkcs1_sha512() {
     assert_eq!(
         test_verify_signed_data(test_file_bytes!("rsa2048-pkcs1-sha512.pem")),
-        OK_IF_RSA_AVAILABLE
+        maybe_rsa()
     );
 }
 
@@ -479,6 +543,62 @@ fn test_ecdsa_prime256v1_sha256_spki_inside_spki() {
     );
 }
 
+#[cfg(all(feature = "aws-lc-rs", not(feature = "aws-lc-rs-fips")))]
+mod ml_dsa {
+    use pki_types::CertificateDer;
+    use pki_types::pem::PemObject;
+    use untrusted::Input;
+
+    use super::*;
+    use crate::cert::Cert;
+    use crate::signed_data::verify_signed_data;
+
+    /// From <https://www.ietf.org/archive/id/draft-ietf-lamps-dilithium-certificates-11.html#name-example-certificates>.
+    #[test]
+    fn self_signed_ml_dsa_44() {
+        let pem = include_bytes!("../tests/tls_server_certs/ml-dsa-44-certificate.pem");
+        let der = CertificateDer::from_pem_slice(pem).unwrap();
+        let cert = Cert::from_der(Input::from(&der)).unwrap();
+        verify_signed_data(
+            SUPPORTED_ALGORITHMS_IN_TESTS,
+            cert.spki,
+            &cert.signed_data,
+            &mut Budget::default(),
+        )
+        .unwrap();
+    }
+
+    /// From <https://www.ietf.org/archive/id/draft-ietf-lamps-dilithium-certificates-11.html#name-example-certificates>.
+    #[test]
+    fn self_signed_ml_dsa_65() {
+        let pem = include_bytes!("../tests/tls_server_certs/ml-dsa-65-certificate.pem");
+        let der = CertificateDer::from_pem_slice(pem).unwrap();
+        let cert = Cert::from_der(Input::from(&der)).unwrap();
+        verify_signed_data(
+            SUPPORTED_ALGORITHMS_IN_TESTS,
+            cert.spki,
+            &cert.signed_data,
+            &mut Budget::default(),
+        )
+        .unwrap();
+    }
+
+    /// From <https://www.ietf.org/archive/id/draft-ietf-lamps-dilithium-certificates-11.html#name-example-certificates>.
+    #[test]
+    fn self_signed_ml_dsa_87() {
+        let pem = include_bytes!("../tests/tls_server_certs/ml-dsa-87-certificate.pem");
+        let der = CertificateDer::from_pem_slice(pem).unwrap();
+        let cert = Cert::from_der(Input::from(&der)).unwrap();
+        verify_signed_data(
+            SUPPORTED_ALGORITHMS_IN_TESTS,
+            cert.spki,
+            &cert.signed_data,
+            &mut Budget::default(),
+        )
+        .unwrap();
+    }
+}
+
 struct TestSignedData {
     spki: Vec<u8>,
     data: Vec<u8>,
@@ -505,7 +625,7 @@ use alloc::str::Lines;
 
 fn read_pem_section(lines: &mut Lines<'_>, section_name: &str) -> Vec<u8> {
     // Skip comments and header
-    let begin_section = format!("-----BEGIN {}-----", section_name);
+    let begin_section = format!("-----BEGIN {section_name}-----");
     loop {
         let line = lines.next().unwrap();
         if line == begin_section {
@@ -515,7 +635,7 @@ fn read_pem_section(lines: &mut Lines<'_>, section_name: &str) -> Vec<u8> {
 
     let mut base64 = String::new();
 
-    let end_section = format!("-----END {}-----", section_name);
+    let end_section = format!("-----END {section_name}-----");
     loop {
         let line = lines.next().unwrap();
         if line == end_section {

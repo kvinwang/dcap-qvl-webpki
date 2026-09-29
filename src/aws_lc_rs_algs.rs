@@ -54,6 +54,27 @@ impl SignatureVerificationAlgorithm for AwsLcRsAlgorithm {
     }
 }
 
+/// ML-DSA signatures using the [4, 4] matrix (security strength category 2).
+pub static ML_DSA_44: &dyn SignatureVerificationAlgorithm = &AwsLcRsAlgorithm {
+    public_key_alg_id: alg_id::ML_DSA_44,
+    signature_alg_id: alg_id::ML_DSA_44,
+    verification_alg: &signature::ML_DSA_44,
+};
+
+/// ML-DSA signatures using the [6, 5] matrix (security strength category 3).
+pub static ML_DSA_65: &dyn SignatureVerificationAlgorithm = &AwsLcRsAlgorithm {
+    public_key_alg_id: alg_id::ML_DSA_65,
+    signature_alg_id: alg_id::ML_DSA_65,
+    verification_alg: &signature::ML_DSA_65,
+};
+
+/// ML-DSA signatures using the [8. 7] matrix (security strength category 5).
+pub static ML_DSA_87: &dyn SignatureVerificationAlgorithm = &AwsLcRsAlgorithm {
+    public_key_alg_id: alg_id::ML_DSA_87,
+    signature_alg_id: alg_id::ML_DSA_87,
+    verification_alg: &signature::ML_DSA_87,
+};
+
 /// ECDSA signatures using the P-256 curve and SHA-256.
 pub static ECDSA_P256_SHA256: &dyn SignatureVerificationAlgorithm = &AwsLcRsAlgorithm {
     public_key_alg_id: alg_id::ECDSA_P256,
@@ -68,6 +89,13 @@ pub static ECDSA_P256_SHA384: &dyn SignatureVerificationAlgorithm = &AwsLcRsAlgo
     verification_alg: &signature::ECDSA_P256_SHA384_ASN1,
 };
 
+/// ECDSA signatures using the P-256 curve and SHA-512. Deprecated.
+pub static ECDSA_P256_SHA512: &dyn SignatureVerificationAlgorithm = &AwsLcRsAlgorithm {
+    public_key_alg_id: alg_id::ECDSA_P256,
+    signature_alg_id: alg_id::ECDSA_SHA512,
+    verification_alg: &signature::ECDSA_P256_SHA512_ASN1,
+};
+
 /// ECDSA signatures using the P-384 curve and SHA-256. Deprecated.
 pub static ECDSA_P384_SHA256: &dyn SignatureVerificationAlgorithm = &AwsLcRsAlgorithm {
     public_key_alg_id: alg_id::ECDSA_P384,
@@ -80,6 +108,13 @@ pub static ECDSA_P384_SHA384: &dyn SignatureVerificationAlgorithm = &AwsLcRsAlgo
     public_key_alg_id: alg_id::ECDSA_P384,
     signature_alg_id: alg_id::ECDSA_SHA384,
     verification_alg: &signature::ECDSA_P384_SHA384_ASN1,
+};
+
+/// ECDSA signatures using the P-384 curve and SHA-512. Deprecated.
+pub static ECDSA_P384_SHA512: &dyn SignatureVerificationAlgorithm = &AwsLcRsAlgorithm {
+    public_key_alg_id: alg_id::ECDSA_P384,
+    signature_alg_id: alg_id::ECDSA_SHA512,
+    verification_alg: &signature::ECDSA_P384_SHA512_ASN1,
 };
 
 /// ECDSA signatures using the P-521 curve and SHA-256.
@@ -234,7 +269,10 @@ pub static ED25519: &dyn SignatureVerificationAlgorithm = &AwsLcRsAlgorithm {
 #[cfg(test)]
 #[path = "."]
 mod tests {
-    use crate::Error;
+    use crate::error::{
+        Error, UnsupportedSignatureAlgorithmContext,
+        UnsupportedSignatureAlgorithmForPublicKeyContext,
+    };
 
     static SUPPORTED_ALGORITHMS_IN_TESTS: &[&dyn super::SignatureVerificationAlgorithm] = &[
         // Reasonable algorithms.
@@ -254,19 +292,55 @@ mod tests {
         // Algorithms deprecated because they are nonsensical combinations.
         super::ECDSA_P256_SHA384, // Truncates digest.
         super::ECDSA_P384_SHA256, // Digest is unnecessarily short.
+        super::ML_DSA_44,
+        super::ML_DSA_65,
+        super::ML_DSA_87,
     ];
 
-    const UNSUPPORTED_SIGNATURE_ALGORITHM_FOR_RSA_KEY: Error =
-        Error::UnsupportedSignatureAlgorithmForPublicKey;
-
-    const UNSUPPORTED_ECDSA_SHA512_SIGNATURE: Error =
-        Error::UnsupportedSignatureAlgorithmForPublicKey;
-
-    const INVALID_SIGNATURE_FOR_RSA_KEY: Error = Error::InvalidSignatureForPublicKey;
-
-    const OK_IF_RSA_AVAILABLE: Result<(), Error> = Ok(());
     const OK_IF_POINT_COMPRESSION_SUPPORTED: Result<(), Error> = Ok(());
 
     #[path = "alg_tests.rs"]
     mod alg_tests;
+
+    fn maybe_rsa() -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn unsupported_for_rsa(_sig_alg_id: &[u8], _public_key_alg_id: &[u8]) -> Error {
+        Error::UnsupportedSignatureAlgorithmForPublicKeyContext(
+            UnsupportedSignatureAlgorithmForPublicKeyContext {
+                #[cfg(feature = "alloc")]
+                signature_algorithm_id: _sig_alg_id.to_vec(),
+                #[cfg(feature = "alloc")]
+                public_key_algorithm_id: _public_key_alg_id.to_vec(),
+            },
+        )
+    }
+
+    fn invalid_rsa_signature() -> Error {
+        Error::InvalidSignatureForPublicKey
+    }
+
+    fn unsupported_for_ecdsa(_sig_alg_id: &[u8], _public_key_alg_id: &[u8]) -> Error {
+        Error::UnsupportedSignatureAlgorithmForPublicKeyContext(
+            UnsupportedSignatureAlgorithmForPublicKeyContext {
+                #[cfg(feature = "alloc")]
+                signature_algorithm_id: _sig_alg_id.to_vec(),
+                #[cfg(feature = "alloc")]
+                public_key_algorithm_id: _public_key_alg_id.to_vec(),
+            },
+        )
+    }
+
+    fn unsupported(_sig_alg_id: &[u8]) -> Error {
+        Error::UnsupportedSignatureAlgorithmContext(UnsupportedSignatureAlgorithmContext {
+            #[cfg(feature = "alloc")]
+            signature_algorithm_id: _sig_alg_id.to_vec(),
+            #[cfg(feature = "alloc")]
+            supported_algorithms: SUPPORTED_ALGORITHMS_IN_TESTS
+                .iter()
+                .map(|&alg| alg.signature_alg_id())
+                .collect(),
+        })
+    }
 }

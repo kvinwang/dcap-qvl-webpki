@@ -1,31 +1,32 @@
+#![allow(dead_code, unreachable_pub)]
+
 use std::error::Error as StdError;
 
 use rcgen::{
-    Certificate, CertificateParams, CertifiedKey, DnType, DnValue, ExtendedKeyUsagePurpose, IsCa,
-    KeyPair, KeyUsagePurpose, SignatureAlgorithm,
+    CertificateParams, CertifiedIssuer, CertifiedKey, DnType, DnValue, ExtendedKeyUsagePurpose,
+    IsCa, Issuer, KeyPair, KeyUsagePurpose, SignatureAlgorithm, SigningKey,
 };
 
 #[cfg_attr(not(feature = "ring"), allow(dead_code))]
 pub fn make_end_entity(
     ekus: Vec<ExtendedKeyUsagePurpose>,
     org_name: impl Into<DnValue>,
-    issuer: &Certificate,
-    issuer_key: &KeyPair,
-) -> Result<CertifiedKey, Box<dyn StdError>> {
-    let key_pair = KeyPair::generate_for(RCGEN_SIGNATURE_ALG)?;
+    issuer: &Issuer<'_, impl SigningKey>,
+) -> Result<CertifiedKey<KeyPair>, Box<dyn StdError>> {
+    let signing_key = KeyPair::generate_for(RCGEN_SIGNATURE_ALG)?;
     Ok(CertifiedKey {
         cert: end_entity_params(vec!["example.com".into()], org_name, ekus)?
-            .signed_by(&key_pair, issuer, issuer_key)?,
-        key_pair,
+            .signed_by(&signing_key, issuer)?,
+        signing_key,
     })
 }
 
-pub fn make_issuer(org_name: impl Into<String>) -> Result<CertifiedKey, Box<dyn StdError>> {
-    let key_pair = KeyPair::generate_for(RCGEN_SIGNATURE_ALG)?;
-    Ok(CertifiedKey {
-        cert: issuer_params(org_name)?.self_signed(&key_pair)?,
-        key_pair,
-    })
+pub fn make_issuer(
+    org_name: impl Into<String>,
+) -> Result<CertifiedIssuer<'static, KeyPair>, Box<dyn StdError>> {
+    let params = issuer_params(org_name)?;
+    let signing_key = KeyPair::generate_for(RCGEN_SIGNATURE_ALG)?;
+    Ok(CertifiedIssuer::self_signed(params, signing_key)?)
 }
 
 /// Populate a [CertificateParams] that describes an unconstrained issuer certificate.

@@ -29,7 +29,12 @@
 //! | `rustcrypto-rsa` | Also enable RSA signature verification with RustCrypto. Implies `rustcrypto` and `alloc`. |
 
 #![no_std]
-#![warn(elided_lifetimes_in_paths, unreachable_pub, clippy::use_self)]
+#![warn(
+    elided_lifetimes_in_paths,
+    unnameable_types,
+    unreachable_pub,
+    clippy::use_self
+)]
 #![deny(missing_docs, clippy::as_conversions)]
 #![allow(
     clippy::len_without_is_empty,
@@ -41,7 +46,7 @@
     clippy::upper_case_acronyms
 )]
 // Enable documentation for all features on docs.rs
-#![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
+#![cfg_attr(webpki_docsrs, feature(doc_cfg))]
 
 #[cfg(any(feature = "std", test))]
 extern crate std;
@@ -78,15 +83,23 @@ pub(crate) mod test_utils;
 pub use {
     cert::Cert,
     crl::{
-        BorrowedCertRevocationList, BorrowedRevokedCert, CertRevocationList, ExpirationPolicy,
-        RevocationCheckDepth, RevocationOptions, RevocationOptionsBuilder, RevocationReason,
-        UnknownStatusPolicy, check_single_cert_crl, check_single_cert_revocation,
+        BorrowedCertRevocationList, BorrowedRevokedCert, CertRevocationList, CrlsRequired,
+        ExpirationPolicy, RevocationCheckDepth, RevocationOptions, RevocationOptionsBuilder,
+        RevocationReason, UnknownStatusPolicy, check_single_cert_crl,
+        check_single_cert_revocation,
     },
+    der::DerIterator,
     end_entity::EndEntityCert,
-    error::{DerTypeId, Error, InvalidNameContext},
+    error::{
+        DerTypeId, Error, InvalidNameContext, UnsupportedSignatureAlgorithmContext,
+        UnsupportedSignatureAlgorithmForPublicKeyContext,
+    },
     rpk_entity::RawPublicKeyEntity,
     trust_anchor::anchor_from_trusted_cert,
-    verify_cert::{KeyUsage, RequiredEkuNotFoundContext, VerifiedPath},
+    verify_cert::{
+        ExtendedKeyUsageValidator, IntermediateIterator, KeyPurposeId, KeyPurposeIdIter, KeyUsage,
+        RequiredEkuNotFoundContext, VerifiedPath,
+    },
 };
 
 #[cfg(feature = "alloc")]
@@ -113,13 +126,14 @@ pub mod ring {
 /// Signature verification algorithm implementations using the aws-lc-rs crypto library.
 pub mod aws_lc_rs {
     pub use super::aws_lc_rs_algs::{
-        ECDSA_P256_SHA256, ECDSA_P256_SHA384, ECDSA_P384_SHA256, ECDSA_P384_SHA384,
-        ECDSA_P521_SHA256, ECDSA_P521_SHA384, ECDSA_P521_SHA512, ED25519,
-        RSA_PKCS1_2048_8192_SHA256, RSA_PKCS1_2048_8192_SHA256_ABSENT_PARAMS,
-        RSA_PKCS1_2048_8192_SHA384, RSA_PKCS1_2048_8192_SHA384_ABSENT_PARAMS,
-        RSA_PKCS1_2048_8192_SHA512, RSA_PKCS1_2048_8192_SHA512_ABSENT_PARAMS,
-        RSA_PKCS1_3072_8192_SHA384, RSA_PSS_2048_8192_SHA256_LEGACY_KEY,
-        RSA_PSS_2048_8192_SHA384_LEGACY_KEY, RSA_PSS_2048_8192_SHA512_LEGACY_KEY,
+        ECDSA_P256_SHA256, ECDSA_P256_SHA384, ECDSA_P256_SHA512, ECDSA_P384_SHA256,
+        ECDSA_P384_SHA384, ECDSA_P384_SHA512, ECDSA_P521_SHA256, ECDSA_P521_SHA384,
+        ECDSA_P521_SHA512, ED25519, ML_DSA_44, ML_DSA_65, ML_DSA_87, RSA_PKCS1_2048_8192_SHA256,
+        RSA_PKCS1_2048_8192_SHA256_ABSENT_PARAMS, RSA_PKCS1_2048_8192_SHA384,
+        RSA_PKCS1_2048_8192_SHA384_ABSENT_PARAMS, RSA_PKCS1_2048_8192_SHA512,
+        RSA_PKCS1_2048_8192_SHA512_ABSENT_PARAMS, RSA_PKCS1_3072_8192_SHA384,
+        RSA_PSS_2048_8192_SHA256_LEGACY_KEY, RSA_PSS_2048_8192_SHA384_LEGACY_KEY,
+        RSA_PSS_2048_8192_SHA512_LEGACY_KEY,
     };
 }
 
@@ -179,9 +193,13 @@ pub static ALL_VERIFICATION_ALGS: &[&dyn pki_types::SignatureVerificationAlgorit
     #[cfg(feature = "aws-lc-rs")]
     aws_lc_rs::ECDSA_P256_SHA384,
     #[cfg(feature = "aws-lc-rs")]
+    aws_lc_rs::ECDSA_P256_SHA512,
+    #[cfg(feature = "aws-lc-rs")]
     aws_lc_rs::ECDSA_P384_SHA256,
     #[cfg(feature = "aws-lc-rs")]
     aws_lc_rs::ECDSA_P384_SHA384,
+    #[cfg(feature = "aws-lc-rs")]
+    aws_lc_rs::ECDSA_P384_SHA512,
     #[cfg(feature = "aws-lc-rs")]
     aws_lc_rs::ECDSA_P521_SHA256,
     #[cfg(feature = "aws-lc-rs")]
@@ -210,6 +228,12 @@ pub static ALL_VERIFICATION_ALGS: &[&dyn pki_types::SignatureVerificationAlgorit
     aws_lc_rs::RSA_PSS_2048_8192_SHA384_LEGACY_KEY,
     #[cfg(feature = "aws-lc-rs")]
     aws_lc_rs::RSA_PSS_2048_8192_SHA512_LEGACY_KEY,
+    #[cfg(feature = "aws-lc-rs")]
+    aws_lc_rs::ML_DSA_44,
+    #[cfg(feature = "aws-lc-rs")]
+    aws_lc_rs::ML_DSA_65,
+    #[cfg(feature = "aws-lc-rs")]
+    aws_lc_rs::ML_DSA_87,
     #[cfg(feature = "rustcrypto")]
     rustcrypto::ECDSA_P256_SHA256,
     #[cfg(feature = "rustcrypto")]
