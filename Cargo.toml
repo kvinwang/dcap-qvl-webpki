@@ -72,14 +72,14 @@ name = "webpki"
 
 [features]
 default = ["std"]
-alloc = ["ring?/alloc", "pki-types/alloc", "rsa?/default"]
+alloc = ["ring?/alloc", "pki-types/alloc"]
 aws-lc-rs = ["dep:aws-lc-rs", "aws-lc-rs/aws-lc-sys", "aws-lc-rs/prebuilt-nasm"]
 aws-lc-rs-fips = ["dep:aws-lc-rs", "aws-lc-rs/fips"]
 ring = ["dep:ring"]
 rustcrypto = ["dep:p256", "dep:p384", "dep:ecdsa", "dep:ed25519-dalek", "dep:sha2", "dep:signature"]
 # RSA signature verification with RustCrypto. Kept separate so that `rustcrypto`
 # users do not pull in `rsa` (RUSTSEC-2023-0071).
-rustcrypto-rsa = ["rustcrypto", "alloc", "dep:rsa"]
+rustcrypto-rsa = ["rustcrypto", "alloc", "dep:rsa", "rsa/default"]
 std = ["alloc", "pki-types/std"]
 
 [dependencies]
