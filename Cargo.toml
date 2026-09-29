@@ -21,7 +21,7 @@ license = "ISC"
 name = "dcap-qvl-webpki"
 readme = "README.md"
 repository = "https://github.com/kvinwang/dcap-qvl-webpki"
-version = "0.103.5+dcap.1"
+version = "0.103.6+dcap.1"
 
 include = [
     "Cargo.toml",
@@ -86,9 +86,9 @@ ring = { version = "0.17", default-features = false, optional = true }
 untrusted = "0.9"
 
 # RustCrypto dependencies
-p256 = { version = "0.13", optional = true, default-features = false, features = ["ecdsa"] }
-p384 = { version = "0.13", optional = true, default-features = false, features = ["ecdsa"] }
-ecdsa = { version = "0.16", optional = true, default-features = false, features = ["der"] }
+p256 = { version = "0.14", optional = true, default-features = false, features = ["ecdsa"] }
+p384 = { version = "0.14", optional = true, default-features = false, features = ["ecdsa"] }
+ecdsa = { version = "0.17", optional = true, default-features = false, features = ["der"] }
 ed25519-dalek = { version = "2.1", optional = true, default-features = false }
 sha2 = { version = "0.10", optional = true, default-features = false }
 signature = { version = "2.2", optional = true, default-features = false }
