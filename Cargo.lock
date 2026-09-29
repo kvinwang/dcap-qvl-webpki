@@ -296,7 +296,7 @@ dependencies = [
 
 [[package]]
 name = "dcap-qvl-webpki"
-version = "0.103.5+dcap.1"
+version = "0.103.6+dcap.1"
 dependencies = [
  "aws-lc-rs",
  "base64",
