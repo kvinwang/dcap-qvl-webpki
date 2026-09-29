@@ -11,7 +11,10 @@
 // WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-#![cfg(all(feature = "alloc", any(feature = "ring", feature = "aws-lc-rs", feature = "rustcrypto")))]
+#![cfg(all(
+    feature = "alloc",
+    any(feature = "ring", feature = "aws-lc-rs", feature = "rustcrypto-rsa")
+))]
 
 use core::time::Duration;
 

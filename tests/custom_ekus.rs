@@ -1,4 +1,7 @@
-#![cfg(all(feature = "alloc", any(feature = "ring", feature = "aws-lc-rs", feature = "rustcrypto")))]
+#![cfg(all(
+    feature = "alloc",
+    any(feature = "ring", feature = "aws-lc-rs", feature = "rustcrypto-rsa")
+))]
 
 use core::time::Duration;
 

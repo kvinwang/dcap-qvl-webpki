@@ -25,7 +25,8 @@
 //! | `std` | Enable features that require libstd. Implies `alloc`. |
 //! | `ring` | Enable use of the *ring* crate for cryptography. |
 //! | `aws-lc-rs` | Enable use of the aws-lc-rs crate for cryptography. Previously this feature was named `aws_lc_rs`. |
-//! | `rustcrypto` | Enable use of RustCrypto crates for pure Rust cryptography. |
+//! | `rustcrypto` | Enable use of RustCrypto crates for pure Rust cryptography (ECDSA and Ed25519). |
+//! | `rustcrypto-rsa` | Also enable RSA signature verification with RustCrypto. Implies `rustcrypto` and `alloc`. |
 
 #![no_std]
 #![warn(elided_lifetimes_in_paths, unreachable_pub, clippy::use_self)]
@@ -129,7 +130,7 @@ pub mod rustcrypto {
         ECDSA_P256_SHA256, ECDSA_P256_SHA384, ECDSA_P384_SHA256, ECDSA_P384_SHA384, ED25519,
     };
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "rustcrypto-rsa")]
     pub use super::rustcrypto_algs::{
         RSA_PKCS1_2048_8192_SHA256, RSA_PKCS1_2048_8192_SHA256_ABSENT_PARAMS,
         RSA_PKCS1_2048_8192_SHA384, RSA_PKCS1_2048_8192_SHA384_ABSENT_PARAMS,
@@ -219,25 +220,25 @@ pub static ALL_VERIFICATION_ALGS: &[&dyn pki_types::SignatureVerificationAlgorit
     rustcrypto::ECDSA_P384_SHA384,
     #[cfg(feature = "rustcrypto")]
     rustcrypto::ED25519,
-    #[cfg(all(feature = "rustcrypto", feature = "alloc"))]
+    #[cfg(feature = "rustcrypto-rsa")]
     rustcrypto::RSA_PKCS1_2048_8192_SHA256,
-    #[cfg(all(feature = "rustcrypto", feature = "alloc"))]
+    #[cfg(feature = "rustcrypto-rsa")]
     rustcrypto::RSA_PKCS1_2048_8192_SHA384,
-    #[cfg(all(feature = "rustcrypto", feature = "alloc"))]
+    #[cfg(feature = "rustcrypto-rsa")]
     rustcrypto::RSA_PKCS1_2048_8192_SHA512,
-    #[cfg(all(feature = "rustcrypto", feature = "alloc"))]
+    #[cfg(feature = "rustcrypto-rsa")]
     rustcrypto::RSA_PKCS1_2048_8192_SHA256_ABSENT_PARAMS,
-    #[cfg(all(feature = "rustcrypto", feature = "alloc"))]
+    #[cfg(feature = "rustcrypto-rsa")]
     rustcrypto::RSA_PKCS1_2048_8192_SHA384_ABSENT_PARAMS,
-    #[cfg(all(feature = "rustcrypto", feature = "alloc"))]
+    #[cfg(feature = "rustcrypto-rsa")]
     rustcrypto::RSA_PKCS1_2048_8192_SHA512_ABSENT_PARAMS,
-    #[cfg(all(feature = "rustcrypto", feature = "alloc"))]
+    #[cfg(feature = "rustcrypto-rsa")]
     rustcrypto::RSA_PKCS1_3072_8192_SHA384,
-    #[cfg(all(feature = "rustcrypto", feature = "alloc"))]
+    #[cfg(feature = "rustcrypto-rsa")]
     rustcrypto::RSA_PSS_2048_8192_SHA256_LEGACY_KEY,
-    #[cfg(all(feature = "rustcrypto", feature = "alloc"))]
+    #[cfg(feature = "rustcrypto-rsa")]
     rustcrypto::RSA_PSS_2048_8192_SHA384_LEGACY_KEY,
-    #[cfg(all(feature = "rustcrypto", feature = "alloc"))]
+    #[cfg(feature = "rustcrypto-rsa")]
     rustcrypto::RSA_PSS_2048_8192_SHA512_LEGACY_KEY,
 ];
 
